@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <div class="top-bar">
+            <div>
+                <h1>Calculator</h1>
+                <p>Simple • Smart • Powerful</p>
+            </div>
+
+            <button id="themeBtn" onclick="toggleTheme()">🌙</button>
+        </div>
+
+        <div class="calculator">
+
+            <div class="display-area">
+                <div id="historyDisplay"></div>
+                <input type="text" id="display" value="0" readonly>
+            </div>
+
+            <div class="memory-row">
+                <button onclick="memoryClear()">MC</button>
+                <button onclick="memoryRecall()">MR</button>
+                <button onclick="memoryAdd()">M+</button>
+                <button onclick="memorySubtract()">M−</button>
+            </div>
+
+            <div class="buttons">
+
+                <button class="function" onclick="clearDisplay()">AC</button>
+                <button class="function" onclick="deleteLast()">DEL</button>
+                <button class="function" onclick="percentage()">%</button>
+                <button class="operator" onclick="appendValue('/')">÷</button>
+
+                <button onclick="appendValue('7')">7</button>
+                <button onclick="appendValue('8')">8</button>
+                <button onclick="appendValue('9')">9</button>
+                <button class="operator" onclick="appendValue('*')">×</button>
+
+                <button onclick="appendValue('4')">4</button>
+                <button onclick="appendValue('5')">5</button>
+                <button onclick="appendValue('6')">6</button>
+                <button class="operator" onclick="appendValue('-')">−</button>
+
+                <button onclick="appendValue('1')">1</button>
+                <button onclick="appendValue('2')">2</button>
+                <button onclick="appendValue('3')">3</button>
+                <button class="operator" onclick="appendValue('+')">+</button>
+
+                <button onclick="toggleSign()">±</button>
+                <button onclick="appendValue('0')">0</button>
+                <button onclick="appendValue('.')">.</button>
+                <button class="equal" onclick="calculate()">=</button>
+
+            </div>
+
+            <div class="scientific-title">
+                Scientific Functions
+            </div>
+
+            <div class="scientific-buttons">
+
+                <button onclick="squareRoot()">√</button>
+                <button onclick="square()">x²</button>
+                <button onclick="appendValue('^')">xʸ</button>
+                <button onclick="reciprocal()">1/x</button>
+
+                <button onclick="appendValue('(')">(</button>
+                <button onclick="appendValue(')')">)</button>
+                <button onclick="appendValue('π')">π</button>
+                <button onclick="factorial()">n!</button>
+
+                <button onclick="scientificFunction('sin')">sin</button>
+                <button onclick="scientificFunction('cos')">cos</button>
+                <button onclick="scientificFunction('tan')">tan</button>
+                <button onclick="scientificFunction('log')">log</button>
+
+                <button onclick="scientificFunction('ln')">ln</button>
+                <button onclick="clearHistory()">Clear History</button>
+                <button onclick="copyResult()">Copy</button>
+                <button onclick="showHistory()">History</button>
+
+            </div>
+
+            <div class="history-panel" id="historyPanel">
+
+                <div class="history-header">
+                    <h3>Calculation History</h3>
+                    <button onclick="clearHistory()">Clear</button>
+                </div>
+
+                <div id="historyList">
+                    <p class="empty-history">No calculations yet.</p>
+                </div>
+
+            </div>
+
+        </div>
+
+        <footer>
+            <p>Calculator Project • HTML • CSS • JavaScript</p>
+        </footer>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>

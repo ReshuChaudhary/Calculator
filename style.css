@@ -7,7 +7,12 @@ let memory = Number(localStorage.getItem("calculatorMemory")) || 0;
 let history = JSON.parse(localStorage.getItem("calculatorHistory")) || [];
 
 let pendingFunction = null;
-let functionText = "";
+let functionMode = false;
+
+
+/* =========================
+   DISPLAY INPUT
+========================= */
 
 function appendValue(value) {
 
@@ -15,12 +20,96 @@ function appendValue(value) {
         display.value = "0";
     }
 
+    if (functionMode) {
+
+        if (value === ".") {
+            display.value = "0.";
+        } else {
+            display.value = value;
+        }
+
+        functionMode = false;
+
+        if (pendingFunction !== null) {
+            autoScientificCalculation();
+        }
+
+        return;
+    }
+
+    /*
+       If a result is already displayed and
+       user presses an operator, continue calculation.
+    */
+    if (
+        isResultDisplayed() &&
+        isOperator(value)
+    ) {
+        display.value += value;
+        return;
+    }
+
+    /*
+       If a result is displayed and user enters
+       a number, start a new calculation.
+    */
+    if (
+        isResultDisplayed() &&
+        !isOperator(value) &&
+        value !== "(" &&
+        value !== ")"
+    ) {
+        display.value = value;
+        historyDisplay.textContent = "";
+        return;
+    }
+
     if (display.value === "0" && value !== ".") {
         display.value = value;
     } else {
         display.value += value;
     }
+
+    autoExpressionCalculation();
 }
+
+
+/* =========================
+   CHECK RESULT
+========================= */
+
+function isResultDisplayed() {
+
+    if (display.value === "Error") {
+        return false;
+    }
+
+    return (
+        historyDisplay.textContent.includes("=") &&
+        pendingFunction === null
+    );
+}
+
+
+/* =========================
+   OPERATORS
+========================= */
+
+function isOperator(value) {
+
+    return (
+        value === "+" ||
+        value === "-" ||
+        value === "*" ||
+        value === "/" ||
+        value === "^"
+    );
+}
+
+
+/* =========================
+   CLEAR
+========================= */
 
 function clearDisplay() {
 
@@ -28,8 +117,13 @@ function clearDisplay() {
     historyDisplay.textContent = "";
 
     pendingFunction = null;
-    functionText = "";
+    functionMode = false;
 }
+
+
+/* =========================
+   DELETE
+========================= */
 
 function deleteLast() {
 
@@ -38,59 +132,41 @@ function deleteLast() {
         return;
     }
 
-    display.value = display.value.slice(0, -1);
+    display.value =
+        display.value.slice(0, -1);
 
     if (display.value === "") {
         display.value = "0";
     }
+
+    historyDisplay.textContent = "";
+
+    autoExpressionCalculation();
 }
+
+
+/* =========================
+   NORMAL CALCULATION
+========================= */
 
 function calculate() {
 
     try {
 
-        let expression = display.value;
-
         if (pendingFunction !== null) {
 
-            let value = Number(expression);
-
-            if (isNaN(value)) {
-                throw new Error();
-            }
-
-            let result = applyFunction(
-                pendingFunction,
-                value
-            );
-
-            if (!Number.isFinite(result)) {
-                throw new Error();
-            }
-
-            result = formatNumber(result);
-
-            historyDisplay.textContent =
-                functionText + value + " =";
-
-            display.value = result;
-
-            addHistory(
-                functionText + value,
-                result
-            );
-
-            pendingFunction = null;
-            functionText = "";
-
+            autoScientificCalculation();
             return;
         }
+
+        let expression = display.value;
 
         if (!expression) {
             return;
         }
 
-        let result = evaluateExpression(expression);
+        let result =
+            evaluateExpression(expression);
 
         if (!Number.isFinite(result)) {
             throw new Error();
@@ -103,9 +179,12 @@ function calculate() {
 
         display.value = result;
 
-        addHistory(expression, result);
+        addHistory(
+            expression,
+            result
+        );
 
-    } catch (error) {
+    } catch {
 
         historyDisplay.textContent =
             "Invalid expression";
@@ -113,9 +192,97 @@ function calculate() {
         display.value = "Error";
 
         pendingFunction = null;
-        functionText = "";
+        functionMode = false;
     }
 }
+
+
+/* =========================
+   AUTO NORMAL CALCULATION
+========================= */
+
+function autoExpressionCalculation() {
+
+    let expression = display.value;
+
+    if (!expression) {
+        return;
+    }
+
+    /*
+       Don't calculate incomplete expressions.
+    */
+
+    if (
+        expression.endsWith("+") ||
+        expression.endsWith("-") ||
+        expression.endsWith("*") ||
+        expression.endsWith("/") ||
+        expression.endsWith("^") ||
+        expression.endsWith("(")
+    ) {
+        return;
+    }
+
+    /*
+       Don't calculate if expression has
+       unbalanced brackets.
+    */
+
+    let open =
+        (expression.match(/\(/g) || []).length;
+
+    let close =
+        (expression.match(/\)/g) || []).length;
+
+    if (open !== close) {
+        return;
+    }
+
+    /*
+       Only auto calculate expressions
+       containing an operator.
+    */
+
+    if (
+        !expression.includes("+") &&
+        !expression.includes("-") &&
+        !expression.includes("*") &&
+        !expression.includes("/") &&
+        !expression.includes("^")
+    ) {
+        return;
+    }
+
+    try {
+
+        let result =
+            evaluateExpression(expression);
+
+        if (!Number.isFinite(result)) {
+            return;
+        }
+
+        result = formatNumber(result);
+
+        historyDisplay.textContent =
+            expression + " =";
+
+        display.value = result;
+
+    } catch {
+
+        /*
+           Do nothing while user is typing
+           an incomplete/invalid expression.
+        */
+    }
+}
+
+
+/* =========================
+   EXPRESSION EVALUATION
+========================= */
 
 function evaluateExpression(expression) {
 
@@ -125,9 +292,12 @@ function evaluateExpression(expression) {
         .replace(/÷/g, "/")
         .replace(/−/g, "-");
 
-    expression = expression.replace(/\^/g, "**");
+    expression =
+        expression.replace(/\^/g, "**");
 
-    if (!/^[0-9+\-*/().\s*]+$/.test(expression)) {
+    if (
+        !/^[0-9+\-*/().\s*]+$/.test(expression)
+    ) {
         throw new Error();
     }
 
@@ -137,6 +307,11 @@ function evaluateExpression(expression) {
         ')'
     )();
 }
+
+
+/* =========================
+   FORMAT NUMBER
+========================= */
 
 function formatNumber(number) {
 
@@ -150,21 +325,23 @@ function formatNumber(number) {
 }
 
 
-/* -------------------------
+/* =========================
    PERCENTAGE
-------------------------- */
+========================= */
 
 function percentage() {
 
     try {
 
-        let value = Number(display.value);
+        let value =
+            Number(display.value);
 
         if (isNaN(value)) {
             throw new Error();
         }
 
-        let result = value / 100;
+        let result =
+            value / 100;
 
         historyDisplay.textContent =
             value + "% =";
@@ -184,198 +361,499 @@ function percentage() {
 }
 
 
-/* -------------------------
-   SCIENTIFIC FUNCTIONS
-------------------------- */
+/* =========================
+   SQUARE ROOT
+========================= */
 
-function setFunction(type) {
+function squareRoot() {
 
-    pendingFunction = type;
+    if (
+        display.value !== "0" &&
+        display.value !== ""
+    ) {
 
-    switch (type) {
+        let value =
+            Number(display.value);
 
-        case "sqrt":
-            functionText = "√";
-            break;
+        if (!isNaN(value)) {
 
-        case "square":
-            functionText = "square(";
-            break;
+            try {
 
-        case "reciprocal":
-            functionText = "1/";
-            break;
+                if (value < 0) {
+                    throw new Error();
+                }
 
-        case "sin":
-            functionText = "sin(";
-            break;
+                let result =
+                    Math.sqrt(value);
 
-        case "cos":
-            functionText = "cos(";
-            break;
+                historyDisplay.textContent =
+                    "√" + value + " =";
 
-        case "tan":
-            functionText = "tan(";
-            break;
+                display.value =
+                    formatNumber(result);
 
-        case "log":
-            functionText = "log(";
-            break;
+                addHistory(
+                    "√" + value,
+                    formatNumber(result)
+                );
 
-        case "ln":
-            functionText = "ln(";
-            break;
+                return;
 
-        case "factorial":
-            functionText = "";
-            break;
+            } catch {
+
+                display.value = "Error";
+                return;
+            }
+        }
     }
 
-    display.value = "0";
-    historyDisplay.textContent =
-        functionText || "Enter value";
+    pendingFunction = "sqrt";
+    functionMode = true;
 
+    historyDisplay.textContent =
+        "√";
 }
 
 
-/* -------------------------
+/* =========================
+   SQUARE
+========================= */
+
+function square() {
+
+    if (
+        display.value !== "0" &&
+        display.value !== ""
+    ) {
+
+        let value =
+            Number(display.value);
+
+        if (!isNaN(value)) {
+
+            let result =
+                value * value;
+
+            historyDisplay.textContent =
+                value + "² =";
+
+            display.value =
+                formatNumber(result);
+
+            addHistory(
+                value + "²",
+                formatNumber(result)
+            );
+
+            return;
+        }
+    }
+
+    pendingFunction = "square";
+    functionMode = true;
+
+    historyDisplay.textContent =
+        "x²";
+}
+
+
+/* =========================
+   RECIPROCAL
+========================= */
+
+function reciprocal() {
+
+    if (
+        display.value !== "0" &&
+        display.value !== ""
+    ) {
+
+        let value =
+            Number(display.value);
+
+        if (!isNaN(value)) {
+
+            if (value === 0) {
+                display.value = "Error";
+                return;
+            }
+
+            let result =
+                1 / value;
+
+            historyDisplay.textContent =
+                "1/" + value + " =";
+
+            display.value =
+                formatNumber(result);
+
+            addHistory(
+                "1/" + value,
+                formatNumber(result)
+            );
+
+            return;
+        }
+    }
+
+    pendingFunction = "reciprocal";
+    functionMode = true;
+
+    historyDisplay.textContent =
+        "1/x";
+}
+
+
+/* =========================
+   FACTORIAL
+========================= */
+
+function factorial() {
+
+    if (
+        display.value !== "0" &&
+        display.value !== ""
+    ) {
+
+        let value =
+            Number(display.value);
+
+        if (!isNaN(value)) {
+
+            try {
+
+                let result =
+                    calculateFactorial(value);
+
+                historyDisplay.textContent =
+                    value + "! =";
+
+                display.value =
+                    formatNumber(result);
+
+                addHistory(
+                    value + "!",
+                    formatNumber(result)
+                );
+
+                return;
+
+            } catch {
+
+                display.value = "Error";
+                return;
+            }
+        }
+    }
+
+    pendingFunction = "factorial";
+    functionMode = true;
+
+    historyDisplay.textContent =
+        "n!";
+}
+
+
+/* =========================
+   SCIENTIFIC FUNCTIONS
+========================= */
+
+function scientificFunction(type) {
+
+    if (
+        display.value !== "0" &&
+        display.value !== ""
+    ) {
+
+        let value =
+            Number(display.value);
+
+        if (!isNaN(value)) {
+
+            try {
+
+                let result =
+                    applyFunction(
+                        type,
+                        value
+                    );
+
+                if (!Number.isFinite(result)) {
+                    throw new Error();
+                }
+
+                let expression =
+                    getFunctionText(
+                        type,
+                        value
+                    );
+
+                result =
+                    formatNumber(result);
+
+                historyDisplay.textContent =
+                    expression + " =";
+
+                display.value =
+                    result;
+
+                addHistory(
+                    expression,
+                    result
+                );
+
+                return;
+
+            } catch {
+
+                display.value = "Error";
+                return;
+            }
+        }
+    }
+
+    pendingFunction = type;
+    functionMode = true;
+
+    historyDisplay.textContent =
+        type;
+}
+
+
+/* =========================
+   AUTO SCIENTIFIC CALCULATION
+========================= */
+
+function autoScientificCalculation() {
+
+    if (pendingFunction === null) {
+        return;
+    }
+
+    let value =
+        Number(display.value);
+
+    if (isNaN(value)) {
+        return;
+    }
+
+    try {
+
+        let result =
+            applyFunction(
+                pendingFunction,
+                value
+            );
+
+        if (!Number.isFinite(result)) {
+            throw new Error();
+        }
+
+        let expression =
+            getFunctionText(
+                pendingFunction,
+                value
+            );
+
+        result =
+            formatNumber(result);
+
+        historyDisplay.textContent =
+            expression + " =";
+
+        display.value =
+            result;
+
+        addHistory(
+            expression,
+            result
+        );
+
+        pendingFunction = null;
+        functionMode = false;
+
+    } catch {
+
+        display.value = "Error";
+
+        pendingFunction = null;
+        functionMode = false;
+    }
+}
+
+
+/* =========================
    APPLY FUNCTION
-------------------------- */
+========================= */
 
 function applyFunction(type, value) {
 
-    switch (type) {
+    if (type === "sqrt") {
 
-        case "sqrt":
+        if (value < 0) {
+            throw new Error();
+        }
 
-            if (value < 0) {
-                throw new Error();
-            }
+        return Math.sqrt(value);
+    }
 
-            return Math.sqrt(value);
+    if (type === "square") {
+        return value * value;
+    }
 
+    if (type === "reciprocal") {
 
-        case "square":
+        if (value === 0) {
+            throw new Error();
+        }
 
-            return value * value;
+        return 1 / value;
+    }
 
+    if (type === "sin") {
 
-        case "reciprocal":
+        return Math.sin(
+            value * Math.PI / 180
+        );
+    }
 
-            if (value === 0) {
-                throw new Error();
-            }
+    if (type === "cos") {
 
-            return 1 / value;
+        return Math.cos(
+            value * Math.PI / 180
+        );
+    }
 
+    if (type === "tan") {
 
-        case "sin":
+        return Math.tan(
+            value * Math.PI / 180
+        );
+    }
 
-            return Math.sin(
-                value * Math.PI / 180
-            );
+    if (type === "log") {
 
+        if (value <= 0) {
+            throw new Error();
+        }
 
-        case "cos":
+        return Math.log10(value);
+    }
 
-            return Math.cos(
-                value * Math.PI / 180
-            );
+    if (type === "ln") {
 
+        if (value <= 0) {
+            throw new Error();
+        }
 
-        case "tan":
+        return Math.log(value);
+    }
 
-            return Math.tan(
-                value * Math.PI / 180
-            );
-
-
-        case "log":
-
-            if (value <= 0) {
-                throw new Error();
-            }
-
-            return Math.log10(value);
-
-
-        case "ln":
-
-            if (value <= 0) {
-                throw new Error();
-            }
-
-            return Math.log(value);
-
-
-        case "factorial":
-
-            if (
-                !Number.isInteger(value) ||
-                value < 0 ||
-                value > 170
-            ) {
-                throw new Error();
-            }
-
-            let result = 1;
-
-            for (
-                let i = 2;
-                i <= value;
-                i++
-            ) {
-                result *= i;
-            }
-
-            return result;
+    if (type === "factorial") {
+        return calculateFactorial(value);
     }
 
     throw new Error();
 }
 
 
-/* -------------------------
-   SCIENTIFIC BUTTONS
-------------------------- */
+/* =========================
+   FACTORIAL CALCULATION
+========================= */
 
-function squareRoot() {
-    setFunction("sqrt");
+function calculateFactorial(value) {
+
+    if (
+        !Number.isInteger(value) ||
+        value < 0 ||
+        value > 170
+    ) {
+        throw new Error();
+    }
+
+    let result = 1;
+
+    for (
+        let i = 2;
+        i <= value;
+        i++
+    ) {
+        result *= i;
+    }
+
+    return result;
 }
 
-function square() {
-    setFunction("square");
+
+/* =========================
+   FUNCTION TEXT
+========================= */
+
+function getFunctionText(type, value) {
+
+    if (type === "sqrt") {
+        return "√" + value;
+    }
+
+    if (type === "square") {
+        return value + "²";
+    }
+
+    if (type === "reciprocal") {
+        return "1/" + value;
+    }
+
+    if (type === "sin") {
+        return "sin(" + value + ")";
+    }
+
+    if (type === "cos") {
+        return "cos(" + value + ")";
+    }
+
+    if (type === "tan") {
+        return "tan(" + value + ")";
+    }
+
+    if (type === "log") {
+        return "log(" + value + ")";
+    }
+
+    if (type === "ln") {
+        return "ln(" + value + ")";
+    }
+
+    if (type === "factorial") {
+        return value + "!";
+    }
+
+    return value;
 }
 
-function reciprocal() {
-    setFunction("reciprocal");
-}
 
-function scientificFunction(type) {
-    setFunction(type);
-}
-
-function factorial() {
-    setFunction("factorial");
-}
-
-
-/* -------------------------
+/* =========================
    SIGN
-------------------------- */
+========================= */
 
 function toggleSign() {
 
     try {
 
-        let value = Number(display.value);
+        let value =
+            Number(display.value);
 
         if (isNaN(value)) {
             throw new Error();
         }
 
         display.value =
-            formatNumber(value * -1);
+            formatNumber(
+                value * -1
+            );
+
+        functionMode = false;
+
+        autoExpressionCalculation();
 
     } catch {
 
@@ -384,11 +862,14 @@ function toggleSign() {
 }
 
 
-/* -------------------------
+/* =========================
    HISTORY
-------------------------- */
+========================= */
 
-function addHistory(expression, result) {
+function addHistory(
+    expression,
+    result
+) {
 
     history.unshift({
         expression: expression,
@@ -407,6 +888,7 @@ function addHistory(expression, result) {
     renderHistory();
 }
 
+
 function renderHistory() {
 
     if (history.length === 0) {
@@ -424,35 +906,39 @@ function renderHistory() {
         let div =
             document.createElement("div");
 
-        div.className = "history-item";
+        div.className =
+            "history-item";
 
         div.innerHTML =
             '<div class="expression">' +
             item.expression +
             '</div>' +
-
             '<div class="result">= ' +
             item.result +
             '</div>';
 
         div.onclick = function() {
-
             display.value =
                 item.result;
 
+            historyDisplay.textContent =
+                "";
         };
 
         historyList.appendChild(div);
-
     });
 }
 
+
 function showHistory() {
 
-    historyPanel.classList.toggle("show");
+    historyPanel.classList.toggle(
+        "show"
+    );
 
     renderHistory();
 }
+
 
 function clearHistory() {
 
@@ -466,9 +952,9 @@ function clearHistory() {
 }
 
 
-/* -------------------------
+/* =========================
    COPY
-------------------------- */
+========================= */
 
 function copyResult() {
 
@@ -488,9 +974,9 @@ function copyResult() {
 }
 
 
-/* -------------------------
+/* =========================
    MEMORY
-------------------------- */
+========================= */
 
 function memoryClear() {
 
@@ -505,6 +991,7 @@ function memoryClear() {
         "Memory Cleared";
 }
 
+
 function memoryRecall() {
 
     display.value =
@@ -513,6 +1000,7 @@ function memoryRecall() {
     historyDisplay.textContent =
         "Memory Recall";
 }
+
 
 function memoryAdd() {
 
@@ -532,6 +1020,7 @@ function memoryAdd() {
             "Added to Memory";
     }
 }
+
 
 function memorySubtract() {
 
@@ -553,9 +1042,9 @@ function memorySubtract() {
 }
 
 
-/* -------------------------
-   DARK / LIGHT MODE
-------------------------- */
+/* =========================
+   THEME
+========================= */
 
 function toggleTheme() {
 
@@ -578,6 +1067,7 @@ function toggleTheme() {
     ).textContent =
         isDark ? "☀️" : "🌙";
 }
+
 
 function loadTheme() {
 
@@ -609,9 +1099,9 @@ function loadTheme() {
 }
 
 
-/* -------------------------
+/* =========================
    KEYBOARD
-------------------------- */
+========================= */
 
 document.addEventListener(
     "keydown",
@@ -632,7 +1122,6 @@ document.addEventListener(
         ) {
 
             appendValue(key);
-
         }
 
         else if (
@@ -643,7 +1132,6 @@ document.addEventListener(
             event.preventDefault();
 
             calculate();
-
         }
 
         else if (
@@ -651,7 +1139,6 @@ document.addEventListener(
         ) {
 
             deleteLast();
-
         }
 
         else if (
@@ -659,7 +1146,6 @@ document.addEventListener(
         ) {
 
             clearDisplay();
-
         }
 
         else if (
@@ -667,16 +1153,14 @@ document.addEventListener(
         ) {
 
             percentage();
-
         }
-
     }
 );
 
 
-/* -------------------------
+/* =========================
    START
-------------------------- */
+========================= */
 
 loadTheme();
 renderHistory();

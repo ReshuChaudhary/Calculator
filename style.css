@@ -1,297 +1,682 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, sans-serif;
-}
+let display = document.getElementById("display");
+let historyDisplay = document.getElementById("historyDisplay");
+let historyPanel = document.getElementById("historyPanel");
+let historyList = document.getElementById("historyList");
 
-:root {
-    --bg: #eef2f7;
-    --card: #ffffff;
-    --display: #f5f7fa;
-    --button: #f0f2f5;
-    --text: #1f2937;
-    --secondary: #6b7280;
-    --operator: #ff9f43;
-    --equal: #2563eb;
-    --function: #dbe4f0;
-    --border: #d9dee7;
-}
+let memory = Number(localStorage.getItem("calculatorMemory")) || 0;
+let history = JSON.parse(localStorage.getItem("calculatorHistory")) || [];
 
-body.dark {
-    --bg: #111827;
-    --card: #1f2937;
-    --display: #111827;
-    --button: #374151;
-    --text: #f9fafb;
-    --secondary: #9ca3af;
-    --operator: #f59e0b;
-    --equal: #3b82f6;
-    --function: #4b5563;
-    --border: #4b5563;
-}
+let pendingFunction = null;
+let functionText = "";
 
-body {
-    min-height: 100vh;
-    background: var(--bg);
-    color: var(--text);
-    transition: 0.3s;
-}
+function appendValue(value) {
 
-.app {
-    width: 100%;
-    max-width: 500px;
-    margin: auto;
-    padding: 25px 15px;
-}
-
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.top-bar h1 {
-    font-size: 30px;
-    margin-bottom: 5px;
-}
-
-.top-bar p {
-    color: var(--secondary);
-    font-size: 14px;
-}
-
-#themeBtn {
-    width: 45px;
-    height: 45px;
-    border: none;
-    border-radius: 50%;
-    background: var(--card);
-    color: var(--text);
-    font-size: 20px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-}
-
-.calculator {
-    background: var(--card);
-    border-radius: 25px;
-    padding: 20px;
-    box-shadow: 0 15px 40px rgba(0,0,0,0.15);
-}
-
-.display-area {
-    background: var(--display);
-    border: 1px solid var(--border);
-    border-radius: 15px;
-    padding: 15px;
-    margin-bottom: 15px;
-    min-height: 105px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-}
-
-#historyDisplay {
-    height: 25px;
-    color: var(--secondary);
-    font-size: 14px;
-    text-align: right;
-    overflow: hidden;
-}
-
-#display {
-    width: 100%;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--text);
-    text-align: right;
-    font-size: 34px;
-    font-weight: bold;
-}
-
-.memory-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
-}
-
-.memory-row button {
-    height: 38px;
-    border: none;
-    border-radius: 10px;
-    background: var(--function);
-    color: var(--text);
-    cursor: pointer;
-    font-size: 13px;
-}
-
-.buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-}
-
-.buttons button,
-.scientific-buttons button {
-    height: 58px;
-    border: none;
-    border-radius: 14px;
-    background: var(--button);
-    color: var(--text);
-    font-size: 18px;
-    cursor: pointer;
-    transition: 0.15s;
-}
-
-.buttons button:hover,
-.scientific-buttons button:hover,
-.memory-row button:hover {
-    transform: translateY(-2px);
-    filter: brightness(0.96);
-}
-
-.buttons button:active,
-.scientific-buttons button:active {
-    transform: scale(0.95);
-}
-
-.buttons .operator {
-    background: var(--operator);
-    color: white;
-    font-weight: bold;
-}
-
-.buttons .equal {
-    background: var(--equal);
-    color: white;
-    font-weight: bold;
-}
-
-.buttons .function {
-    background: var(--function);
-}
-
-.scientific-title {
-    margin: 22px 0 10px;
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--secondary);
-}
-
-.scientific-buttons {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-}
-
-.scientific-buttons button {
-    height: 48px;
-    font-size: 14px;
-}
-
-.scientific-buttons button:nth-child(14) {
-    grid-column: span 2;
-}
-
-.history-panel {
-    display: none;
-    margin-top: 20px;
-    border-top: 1px solid var(--border);
-    padding-top: 15px;
-}
-
-.history-panel.show {
-    display: block;
-}
-
-.history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.history-header h3 {
-    font-size: 16px;
-}
-
-.history-header button {
-    border: none;
-    background: transparent;
-    color: #ef4444;
-    cursor: pointer;
-}
-
-#historyList {
-    max-height: 180px;
-    overflow-y: auto;
-}
-
-.history-item {
-    background: var(--display);
-    border-radius: 10px;
-    padding: 10px;
-    margin-bottom: 8px;
-    cursor: pointer;
-}
-
-.history-item .expression {
-    color: var(--secondary);
-    font-size: 13px;
-}
-
-.history-item .result {
-    font-weight: bold;
-    font-size: 16px;
-    margin-top: 3px;
-}
-
-.empty-history {
-    color: var(--secondary);
-    text-align: center;
-    padding: 15px;
-}
-
-footer {
-    text-align: center;
-    margin-top: 20px;
-    color: var(--secondary);
-    font-size: 12px;
-}
-
-@media (max-width: 450px) {
-
-    .app {
-        padding: 15px 10px;
+    if (display.value === "Error") {
+        display.value = "0";
     }
 
-    .calculator {
-        padding: 14px;
-        border-radius: 20px;
-    }
-
-    #display {
-        font-size: 28px;
-    }
-
-    .buttons {
-        gap: 7px;
-    }
-
-    .buttons button {
-        height: 52px;
-    }
-
-    .scientific-buttons {
-        gap: 6px;
-    }
-
-    .scientific-buttons button {
-        height: 44px;
-        font-size: 12px;
+    if (display.value === "0" && value !== ".") {
+        display.value = value;
+    } else {
+        display.value += value;
     }
 }
+
+function clearDisplay() {
+
+    display.value = "0";
+    historyDisplay.textContent = "";
+
+    pendingFunction = null;
+    functionText = "";
+}
+
+function deleteLast() {
+
+    if (display.value === "Error") {
+        clearDisplay();
+        return;
+    }
+
+    display.value = display.value.slice(0, -1);
+
+    if (display.value === "") {
+        display.value = "0";
+    }
+}
+
+function calculate() {
+
+    try {
+
+        let expression = display.value;
+
+        if (pendingFunction !== null) {
+
+            let value = Number(expression);
+
+            if (isNaN(value)) {
+                throw new Error();
+            }
+
+            let result = applyFunction(
+                pendingFunction,
+                value
+            );
+
+            if (!Number.isFinite(result)) {
+                throw new Error();
+            }
+
+            result = formatNumber(result);
+
+            historyDisplay.textContent =
+                functionText + value + " =";
+
+            display.value = result;
+
+            addHistory(
+                functionText + value,
+                result
+            );
+
+            pendingFunction = null;
+            functionText = "";
+
+            return;
+        }
+
+        if (!expression) {
+            return;
+        }
+
+        let result = evaluateExpression(expression);
+
+        if (!Number.isFinite(result)) {
+            throw new Error();
+        }
+
+        result = formatNumber(result);
+
+        historyDisplay.textContent =
+            expression + " =";
+
+        display.value = result;
+
+        addHistory(expression, result);
+
+    } catch (error) {
+
+        historyDisplay.textContent =
+            "Invalid expression";
+
+        display.value = "Error";
+
+        pendingFunction = null;
+        functionText = "";
+    }
+}
+
+function evaluateExpression(expression) {
+
+    expression = expression
+        .replace(/π/g, Math.PI)
+        .replace(/×/g, "*")
+        .replace(/÷/g, "/")
+        .replace(/−/g, "-");
+
+    expression = expression.replace(/\^/g, "**");
+
+    if (!/^[0-9+\-*/().\s*]+$/.test(expression)) {
+        throw new Error();
+    }
+
+    return Function(
+        '"use strict"; return (' +
+        expression +
+        ')'
+    )();
+}
+
+function formatNumber(number) {
+
+    if (Number.isInteger(number)) {
+        return number.toString();
+    }
+
+    return parseFloat(
+        number.toFixed(10)
+    ).toString();
+}
+
+
+/* -------------------------
+   PERCENTAGE
+------------------------- */
+
+function percentage() {
+
+    try {
+
+        let value = Number(display.value);
+
+        if (isNaN(value)) {
+            throw new Error();
+        }
+
+        let result = value / 100;
+
+        historyDisplay.textContent =
+            value + "% =";
+
+        display.value =
+            formatNumber(result);
+
+        addHistory(
+            value + "%",
+            formatNumber(result)
+        );
+
+    } catch {
+
+        display.value = "Error";
+    }
+}
+
+
+/* -------------------------
+   SCIENTIFIC FUNCTIONS
+------------------------- */
+
+function setFunction(type) {
+
+    pendingFunction = type;
+
+    switch (type) {
+
+        case "sqrt":
+            functionText = "√";
+            break;
+
+        case "square":
+            functionText = "square(";
+            break;
+
+        case "reciprocal":
+            functionText = "1/";
+            break;
+
+        case "sin":
+            functionText = "sin(";
+            break;
+
+        case "cos":
+            functionText = "cos(";
+            break;
+
+        case "tan":
+            functionText = "tan(";
+            break;
+
+        case "log":
+            functionText = "log(";
+            break;
+
+        case "ln":
+            functionText = "ln(";
+            break;
+
+        case "factorial":
+            functionText = "";
+            break;
+    }
+
+    display.value = "0";
+    historyDisplay.textContent =
+        functionText || "Enter value";
+
+}
+
+
+/* -------------------------
+   APPLY FUNCTION
+------------------------- */
+
+function applyFunction(type, value) {
+
+    switch (type) {
+
+        case "sqrt":
+
+            if (value < 0) {
+                throw new Error();
+            }
+
+            return Math.sqrt(value);
+
+
+        case "square":
+
+            return value * value;
+
+
+        case "reciprocal":
+
+            if (value === 0) {
+                throw new Error();
+            }
+
+            return 1 / value;
+
+
+        case "sin":
+
+            return Math.sin(
+                value * Math.PI / 180
+            );
+
+
+        case "cos":
+
+            return Math.cos(
+                value * Math.PI / 180
+            );
+
+
+        case "tan":
+
+            return Math.tan(
+                value * Math.PI / 180
+            );
+
+
+        case "log":
+
+            if (value <= 0) {
+                throw new Error();
+            }
+
+            return Math.log10(value);
+
+
+        case "ln":
+
+            if (value <= 0) {
+                throw new Error();
+            }
+
+            return Math.log(value);
+
+
+        case "factorial":
+
+            if (
+                !Number.isInteger(value) ||
+                value < 0 ||
+                value > 170
+            ) {
+                throw new Error();
+            }
+
+            let result = 1;
+
+            for (
+                let i = 2;
+                i <= value;
+                i++
+            ) {
+                result *= i;
+            }
+
+            return result;
+    }
+
+    throw new Error();
+}
+
+
+/* -------------------------
+   SCIENTIFIC BUTTONS
+------------------------- */
+
+function squareRoot() {
+    setFunction("sqrt");
+}
+
+function square() {
+    setFunction("square");
+}
+
+function reciprocal() {
+    setFunction("reciprocal");
+}
+
+function scientificFunction(type) {
+    setFunction(type);
+}
+
+function factorial() {
+    setFunction("factorial");
+}
+
+
+/* -------------------------
+   SIGN
+------------------------- */
+
+function toggleSign() {
+
+    try {
+
+        let value = Number(display.value);
+
+        if (isNaN(value)) {
+            throw new Error();
+        }
+
+        display.value =
+            formatNumber(value * -1);
+
+    } catch {
+
+        display.value = "Error";
+    }
+}
+
+
+/* -------------------------
+   HISTORY
+------------------------- */
+
+function addHistory(expression, result) {
+
+    history.unshift({
+        expression: expression,
+        result: result
+    });
+
+    if (history.length > 20) {
+        history.pop();
+    }
+
+    localStorage.setItem(
+        "calculatorHistory",
+        JSON.stringify(history)
+    );
+
+    renderHistory();
+}
+
+function renderHistory() {
+
+    if (history.length === 0) {
+
+        historyList.innerHTML =
+            '<p class="empty-history">No calculations yet.</p>';
+
+        return;
+    }
+
+    historyList.innerHTML = "";
+
+    history.forEach(function(item) {
+
+        let div =
+            document.createElement("div");
+
+        div.className = "history-item";
+
+        div.innerHTML =
+            '<div class="expression">' +
+            item.expression +
+            '</div>' +
+
+            '<div class="result">= ' +
+            item.result +
+            '</div>';
+
+        div.onclick = function() {
+
+            display.value =
+                item.result;
+
+        };
+
+        historyList.appendChild(div);
+
+    });
+}
+
+function showHistory() {
+
+    historyPanel.classList.toggle("show");
+
+    renderHistory();
+}
+
+function clearHistory() {
+
+    history = [];
+
+    localStorage.removeItem(
+        "calculatorHistory"
+    );
+
+    renderHistory();
+}
+
+
+/* -------------------------
+   COPY
+------------------------- */
+
+function copyResult() {
+
+    if (
+        display.value === "Error" ||
+        display.value === ""
+    ) {
+        return;
+    }
+
+    navigator.clipboard.writeText(
+        display.value
+    );
+
+    historyDisplay.textContent =
+        "Copied!";
+}
+
+
+/* -------------------------
+   MEMORY
+------------------------- */
+
+function memoryClear() {
+
+    memory = 0;
+
+    localStorage.setItem(
+        "calculatorMemory",
+        memory
+    );
+
+    historyDisplay.textContent =
+        "Memory Cleared";
+}
+
+function memoryRecall() {
+
+    display.value =
+        formatNumber(memory);
+
+    historyDisplay.textContent =
+        "Memory Recall";
+}
+
+function memoryAdd() {
+
+    let value =
+        Number(display.value);
+
+    if (!isNaN(value)) {
+
+        memory += value;
+
+        localStorage.setItem(
+            "calculatorMemory",
+            memory
+        );
+
+        historyDisplay.textContent =
+            "Added to Memory";
+    }
+}
+
+function memorySubtract() {
+
+    let value =
+        Number(display.value);
+
+    if (!isNaN(value)) {
+
+        memory -= value;
+
+        localStorage.setItem(
+            "calculatorMemory",
+            memory
+        );
+
+        historyDisplay.textContent =
+            "Subtracted from Memory";
+    }
+}
+
+
+/* -------------------------
+   DARK / LIGHT MODE
+------------------------- */
+
+function toggleTheme() {
+
+    document.body.classList.toggle(
+        "dark"
+    );
+
+    let isDark =
+        document.body.classList.contains(
+            "dark"
+        );
+
+    localStorage.setItem(
+        "calculatorTheme",
+        isDark ? "dark" : "light"
+    );
+
+    document.getElementById(
+        "themeBtn"
+    ).textContent =
+        isDark ? "☀️" : "🌙";
+}
+
+function loadTheme() {
+
+    let theme =
+        localStorage.getItem(
+            "calculatorTheme"
+        );
+
+    if (theme === "dark") {
+
+        document.body.classList.add(
+            "dark"
+        );
+
+        document.getElementById(
+            "themeBtn"
+        ).textContent = "☀️";
+
+    } else {
+
+        document.body.classList.remove(
+            "dark"
+        );
+
+        document.getElementById(
+            "themeBtn"
+        ).textContent = "🌙";
+    }
+}
+
+
+/* -------------------------
+   KEYBOARD
+------------------------- */
+
+document.addEventListener(
+    "keydown",
+    function(event) {
+
+        let key = event.key;
+
+        if (
+            (key >= "0" && key <= "9") ||
+            key === "." ||
+            key === "+" ||
+            key === "-" ||
+            key === "*" ||
+            key === "/" ||
+            key === "(" ||
+            key === ")" ||
+            key === "^"
+        ) {
+
+            appendValue(key);
+
+        }
+
+        else if (
+            key === "Enter" ||
+            key === "="
+        ) {
+
+            event.preventDefault();
+
+            calculate();
+
+        }
+
+        else if (
+            key === "Backspace"
+        ) {
+
+            deleteLast();
+
+        }
+
+        else if (
+            key === "Escape"
+        ) {
+
+            clearDisplay();
+
+        }
+
+        else if (
+            key === "%"
+        ) {
+
+            percentage();
+
+        }
+
+    }
+);
+
+
+/* -------------------------
+   START
+------------------------- */
+
+loadTheme();
+renderHistory();
